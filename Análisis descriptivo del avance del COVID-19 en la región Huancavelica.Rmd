@@ -1,0 +1,296 @@
+---
+title: "Ejercicio_1_CD_R_PUCP"
+author: "Josué Tapia"
+date: "28/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Análisis descriptivo del avance del COVID-19 en la región Huancavelica
+
+```{r}
+rm(list=ls())
+```
+
+```{r}
+#memory.limit(size=2500)
+```
+
+```{r}
+setwd("C:/Users/User/Desktop/PUCP-DIPLOMA-CD-2021/R_CCSS/ejercicio1-CD-PUCP")
+```
+
+```{r}
+library(rio)# importar las bases de datos
+library(dplyr) # usar el pipe 
+library(tidyverse) # usar el pipe
+library(lubridate) # dar formato a las fechas
+library(knitr) # dar formato a las tablas en html con la función kable
+library(rmarkdown)  # usar un diseño de html
+```
+
+```{r}
+
+library(rio)
+#contagios=import("positivos_covid-14.csv")
+#fallecidos=import("fallecidos_covid-14.csv")
+```
+
+```{r}
+library(rio)
+#vacunados=import("vacunas_covid.csv")
+```
+
+
+##3.1 se crean las bases por la región asignada (HUANCAVELICA) para tener objetos
+
+```{r}
+library(dplyr)
+
+#fallecidosHVCA=filter(fallecidos,DEPARTAMENTO=="HUANCAVELICA")
+#contagiosHVCA=filter(contagios,DEPARTAMENTO=="HUANCAVELICA")
+#vacunadosHVCA=filter(vacunados,DEPARTAMENTO=="HUANCAVELICA")
+#rm(fallecidos)
+#rm(contagios)
+#rm(vacunados)
+```
+
+```{r}
+#export(fallecidosHVCA,"fallecidosHVCA.xlsx")
+#export(contagiosHVCA,"contagiosHVCA.xlsx")
+
+```
+
+```{r}
+#export(vacunadosHVCA,"vacunadosHVCA.xlsx")
+```
+
+
+```{r}
+fallecidosHVCA=import("fallecidosHVCA.xlsx")
+contagiosHVCA=import("contagiosHVCA.xlsx")
+```
+
+```{r}
+vacunadosHVCA=import("vacunadosHVCA.xlsx")
+```
+
+##haremos uso del paquete lubridate ya instalado que permite trabajar y dar formato a fechas, con la recomendación de la profesora
+
+```{r}
+library(lubridate)
+fallecidosHVCA$FECHA_FALLECIMIENTO=as.character(fallecidosHVCA$FECHA_FALLECIMIENTO)
+fallecidosHVCA$fecha=as.Date(fallecidosHVCA$FECHA_FALLECIMIENTO,"%Y%m%d")
+fallecidosHVCA$año=year(fallecidosHVCA$fecha) # puedo extraer el año
+fallecidosHVCA$mes=month(fallecidosHVCA$fecha) # puedo extraer el mes
+fallecidosHVCA$añomes<- as.factor(format(fallecidosHVCA$fecha,'%Y-%m')) # puedo extraer el año y el mes
+
+
+contagiosHVCA$FECHA_RESULTADO=as.character(contagiosHVCA$FECHA_RESULTADO)
+contagiosHVCA$fecha=as.Date(contagiosHVCA$FECHA_RESULTADO,"%Y%m%d")
+contagiosHVCA$año=year(contagiosHVCA$fecha) # puedo extraer el año
+contagiosHVCA$mes=month(contagiosHVCA$fecha) # puedo extraer el mes
+contagiosHVCA$añomes<- as.factor(format(contagiosHVCA$fecha,'%Y-%m')) # puedo extraer el año y el mes
+
+vacunadosHVCA$FECHA_VACUNACION=as.character(vacunadosHVCA$FECHA_VACUNACION)
+vacunadosHVCA$fecha=as.Date(vacunadosHVCA$FECHA_VACUNACION,"%Y%m%d")
+vacunadosHVCA$año=year(vacunadosHVCA$fecha) # puedo extraer el año
+vacunadosHVCA$mes=month(vacunadosHVCA$fecha) # puedo extraer el mes
+vacunadosHVCA$añomes<- as.factor(format(vacunadosHVCA$fecha,'%Y-%m')) # puedo extraer el año y el mes
+```
+
+
+```{r}
+#Fallecidos por mes en Huancavelica
+tabla_mes_fallecidos=fallecidosHVCA%>%
+  group_by(añomes)%>%
+  summarise(Numero_fallecidos = n())
+```
+
+```{r}
+#Positivos por mes en Huancavelica
+tabla_mes_contagios=contagiosHVCA%>%
+  group_by(añomes)%>%
+  summarise(Numero_contagios = n())
+tabla_mes_contagios=na.omit(tabla_mes_contagios)
+```
+
+```{r}
+#Vacunados por mes en Huancavelica
+
+tabla_mes_vacunacion_dosis=vacunadosHVCA%>%
+  group_by(añomes)%>%
+  summarise(Numero_dosis_aplicadas = n())
+  
+vacunadosHVCA_2 <- vacunadosHVCA %>% group_by(UUID) %>% filter (! duplicated(UUID))
+tabla_mes_vacunacion_personas=vacunadosHVCA_2%>%
+  group_by(añomes)%>%
+  summarise(Numero_persona_vacunadas = n())
+```
+
+#juntando los 3 cuadros
+```{r}
+tabla3.1A=full_join(tabla_mes_fallecidos,tabla_mes_contagios,by="añomes")
+tabla3.1B=full_join(tabla_mes_vacunacion_dosis,tabla_mes_vacunacion_personas,by="añomes")
+tabla3.1=full_join(tabla3.1A,tabla3.1B,by="añomes")
+kable(tabla3.1)
+```
+
+##3.2 calcular la tasa de contagio por mes, la tasa de fallecidos y la tasa de vacunación corresponde a considerar según INEI el valor de población proyectada 2021 para HVCA es 358400 habitantes y se multiplica por 100 mil habitantes
+
+```{r}
+tabla3.1$poblacion=358.4*1000
+
+##Tasa de fallecidos mensual
+tabla3.1$Tasa_fallecidos=(tabla3.1$Numero_fallecidos/tabla3.1$poblacion)*100000
+##Tasa de contagio mensual
+tabla3.1$Tasa_contagios=(tabla3.1$Numero_contagios/tabla3.1$poblacion)*100000
+##Tasa de dosis aplicadas
+tabla3.1$Tasa_dosis_aplicadas=(tabla3.1$Numero_dosis_aplicadas/tabla3.1$poblacion)*100000
+##Tasa de vacunación mensual
+tabla3.1$Tasa_personas_vacunadas=(tabla3.1$Numero_persona_vacunadas/tabla3.1$poblacion)*100000
+kable(tabla3.1)
+
+```
+
+##3.3 una tabla que muestre letalidad por mes
+
+```{r}
+##tasa de letalidad por mes es igual a cantidad de fallecidos/cantidad de contagios
+
+tabla3.1$P_Letalidad=(tabla3.1$Numero_fallecidos/tabla3.1$Numero_contagios)*100
+kable(tabla3.1%>%select(añomes,P_Letalidad))
+
+```
+##3.4 una tabla que muestre cantidad de contagios, fallecidos y vacunados por provincia
+
+```{r}
+tabla_provincia_fallecidos=fallecidosHVCA%>%
+  group_by(PROVINCIA)%>%
+  summarise(Numero_fallecidos = n())
+
+
+tabla_provincia_contagios=contagiosHVCA%>%
+  group_by(PROVINCIA)%>%
+  summarise(Numero_contagios = n())
+tabla_provincia_contagios=na.omit(tabla_provincia_contagios)
+
+
+tabla_provincia_vacunacion_dosis=vacunadosHVCA%>%
+  group_by(PROVINCIA)%>%
+  summarise(Numero_dosis_aplicadas = n())
+
+
+tabla_provincia_vacunacion_personas=vacunadosHVCA_2%>%
+  group_by(PROVINCIA)%>%
+  summarise(Numero_persona_vacunadas = n())
+
+library(tidyverse)
+tabla3.4=list(tabla_provincia_fallecidos, tabla_provincia_contagios, tabla_provincia_vacunacion_dosis, tabla_provincia_vacunacion_personas) %>% reduce(full_join, by = "PROVINCIA")
+kable(tabla3.4)
+
+```
+
+##3.5 reportar cantidad de contagios, fallecidos y vacunados por distrito
+
+```{r}
+
+tabla_distritos_fallecidos_5top=fallecidosHVCA%>%
+  group_by(DISTRITO)%>%
+  summarise(Numero_fallecidos = n())%>%
+  top_n(n = 5)
+
+## Selecting by Numero_fallecidos
+
+tabla_distritos_fallecidos_5top
+
+tabla_distritos_fallecidos_5menos=fallecidosHVCA%>%
+  group_by(DISTRITO)%>%
+  summarise(Numero_fallecidos = n())%>%
+    arrange (Numero_fallecidos)%>%
+  tail(n = 5)
+kable(tabla_distritos_fallecidos_5menos)
+
+tabla_distritos_contagios_5top=contagiosHVCA%>%
+  group_by(DISTRITO)%>%
+  summarise(Numero_contagios = n())%>%
+  top_n(n = 5)
+## Selecting by Numero_contagios
+kable(tabla_distritos_contagios_5top)
+
+tabla_distritos_contagios_5menos=contagiosHVCA%>%
+  group_by(DISTRITO)%>%
+  summarise(Numero_contagios = n())%>%
+  arrange (Numero_contagios)%>%
+  tail(n = 5)
+kable(tabla_distritos_contagios_5menos)
+
+
+```
+
+#3.7 Tabla resumen cantidad de contagios, fallecimiento y vacunados por grupos de edad
+
+```{r,eval=FALSE}
+fallecidosHVCA=fallecidosHVCA %>% mutate(GEDAD = case_when(EDAD_DECLARADA>=0 & EDAD_DECLARADA <=18   ~ "Menores18", EDAD_DECLARADA>18 & EDAD_DECLARADA <=29   ~ "Jovenes",EDAD_DECLARADA>29 & EDAD_DECLARADA <=60   ~ "Adultos",EDAD_DECLARADA > 60 ~ "Adultosmayores", TRUE ~ "Low"))
+
+tabla_GEDAD_fallecidos=fallecidosHVCA%>%
+  group_by(GEDAD)%>%
+  summarise(Numero_fallecidos = n())%>%
+  arrange (Numero_fallecidos)%>%
+  tail(n = 5)
+
+
+contagiosHVCA=contagiosHVCA %>% mutate(GEDAD = case_when(EDAD>=0 & EDAD <=18   ~ "Menores18", EDAD>18 & EDAD <=29   ~ "Jovenes",EDAD>29 & EDAD <=60   ~ "Adultos",EDAD > 60 ~ "Adultosmayores"))
+tabla_GEDAD_contagios=contagiosHVCA%>%
+  group_by(GEDAD)%>%
+  summarise(Numero_fallecidos = n())
+tabla_GEDAD_contagios
+
+vacunadosHVCA=vacunadosHVCA %>% mutate(GEDAD = case_when(EDAD>=0 & EDAD <=18   ~ "Menores18", EDAD>18 & EDAD <=29   ~ "Jovenes",EDAD>29 & EDAD <=60   ~ "Adultos",EDAD > 60 ~ "Adultosmayores"))
+tabla_GEDAD_dosis=vacunadosHVCA%>%
+  group_by(GEDAD)%>%
+  summarise(Numero_dosis_vacunados = n())
+library(tidyverse)
+library(knitr)
+tabla3.5=list(tabla_GEDAD_fallecidos, tabla_GEDAD_contagios, tabla_GEDAD_dosis) %>% reduce(full_join, by = "GEDAD")
+kable(tabla3.5)
+
+```
+
+#3.8 ¿COVID-19 Ha afectado más a mujeres o hombres?
+```{r}
+
+
+#Para calcular porcentajes puede utilizar el comando table
+
+tabla3.7.1=prop.table(table(contagiosHVCA$SEXO))*100
+kable(tabla3.7.1)
+tabla3.7.1
+
+tabla3.7.2=prop.table(table(fallecidosHVCA$SEXO))*100
+kable(tabla3.7.2)
+tabla3.7.2
+
+#Más sobre tablas en https://fhernanb.github.io/Manual-de-R/tablas.html
+
+```
+
+#3.10 tabla que muestre grupo de riesgo según dosis aplicadas y el sexo
+
+```{r}
+
+tabla_dosis_aplicadas=vacunadosHVCA%>%
+  group_by(GRUPO_RIESGO,DOSIS,SEXO)%>%
+  summarise(Numero_dosis_aplicadas = n())
+## `summarise()` has grouped output by 'GRUPO_RIESGO', 'DOSIS'. You can override using the `.groups` argument.
+kable(tabla_dosis_aplicadas)
+
+```
+
+#4 resumen, por favor, considerar la formulación del código, puesto que al unir las bases de datos me sale error de que no puede unir la asignación de un vector de tamaño 40 Mb; sin embargo, continué programando, esperando no muestre dicho error.
+
+Considerando, la evaluación a los datos evaluados del departamento de Huancavelica se puede advertir que el impacto sobre la cantidad total de fallecidos ascendió a un total de 0.57%, con una positividad relativamente baja en comparación del total nacional y que el proceso de vacunación respecto al volumen de población estimada para 2021 es de alrededor del 50% dela población.

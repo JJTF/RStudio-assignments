@@ -1,0 +1,131 @@
+---
+title: "Trabajo_Final_R"
+author: "Josué Tapia"
+date: "14/11/2021"
+output: rmdformats::readthedown
+---
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```
+
+```{r}
+rm(list=ls())
+```
+
+```{r}
+#memory.limit(size=2500)
+```
+
+```{r}
+setwd("C:/Users/User/Desktop/PUCP-DIPLOMA-CD-2021/R_CCSS/trabajo_individual/01. BD I CENPAR-2012")
+```
+
+```{r}
+library(rio)# importar las bases de datos
+library(dplyr) # usar el pipe 
+library(tidyverse) # usar el pipe
+library(lubridate) # dar formato a las fechas
+library(knitr) # dar formato a las tablas en html con la función kable
+library(rmarkdown)  # usar un diseño de html
+```
+
+###Abrir las librerias
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+# Trabajo Individual
+## 1. El nivel de educación de los pescadores artesanales es una limitante para su desarrollo
+## 1.1 De conocerse el nivel educativo de los pescadores es posible recomendar políticas para su crecimiento
+
+## 2. La base de datos a utilizar es la relacionada al primer censo nacional de la pesca artesanal del ámbito marítimo de 2012
+
+```{r}
+library(rio)
+data_PA=import("01.Pescador Artesanal.sav")
+#names(data_PA)
+```
+
+## 3. Tablas resúmenes o indicadores
+
+```{r}
+#Tabla por departamentos
+library(dplyr)
+tabla_PA_depa=data_PA%>%
+  group_by(NOM_DD)%>%
+  summarise(Numero_PA_depa = n())
+
+```
+
+```{r}
+#Tabla por departamentos
+tabla_PA_depa=data_PA%>%
+  group_by(NOM_DD, NOM_PP, NOM_DESMB)%>%
+  summarise(Numero_PA_depa = n())%>%
+  arrange (Numero_PA_depa)%>%
+   top_n(n = 5)
+kable(tabla_distritos_fallecidos_5menos)
+
+```
+
+
+```{r}
+#Tabla por provincias
+tabla_PA_prov=data_PA%>%
+  group_by(NOM_PP)%>%
+  summarise(Numero_PA_prov = n())
+```
+
+
+```{r}
+#Tabla por departamentos
+tabla_PA_depa=data_PA%>%
+  group_by(NOM_DD)%>%
+  summarise(Numero_PA_depa = n())
+
+tabla_provincia_contagios=contagiosHVCA%>%
+  group_by(PROVINCIA)%>%
+  summarise(Numero_contagios = n())
+tabla_provincia_contagios=na.omit(tabla_provincia_contagios)
+
+
+tabla_provincia_vacunacion_dosis=vacunadosHVCA%>%
+  group_by(PROVINCIA)%>%
+  summarise(Numero_dosis_aplicadas = n())
+
+
+tabla_provincia_vacunacion_personas=vacunadosHVCA_2%>%
+  group_by(PROVINCIA)%>%
+  summarise(Numero_persona_vacunadas = n())
+
+library(tidyverse)
+tabla3.4=list(tabla_provincia_fallecidos, tabla_provincia_contagios, tabla_provincia_vacunacion_dosis, tabla_provincia_vacunacion_personas) %>% reduce(full_join, by = "PROVINCIA")
+kable(tabla3.4)
+
+```
+
+
+
+## 4. 5 gráficos con ggplot2
+
+
+
+
+## 5. Análisis descriptivo según la pregunta de investigación
+
+
+
+
+
+## 6. Fuente de Datos
+### https://webinei.inei.gob.pe/anda_inei/index.php/catalog/223
+
+
+
+
+
+
+
+
+

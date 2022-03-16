@@ -1,0 +1,258 @@
+---
+title: "PC_2"
+author: "Josué Tapia"
+date: "12/02/2022"
+output: rmdformats::readthedown
+---
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```
+
+```{r}
+rm(list=ls())
+```
+
+```{r}
+#memory.limit(size=2500)
+```
+
+```{r}
+library(rtweet)
+library(tidyverse)
+library(twitteR)
+library(ROAuth)
+library(httr)
+library(tm)
+library(SnowballC)
+library(openssl)
+library(httpuv)
+```
+
+### Obtener la DATA
+## Se utiliza las credenciales para hacer la conexión con el API de Twitter.
+
+```{r}
+api_key <- "icWUF3nDtKSaKHnzGLJgyaAQn"
+api_secret <- "Sz99lpIZdfA4oVxuLj6YcuFzl8RbRD9chTUXh6mKrtN7QmFnOW"
+access_token <- "1491454086532714503-nh6dogKPByxCz22ejJdsqFn1VOMf2t"
+access_token_secret <- "K9OuJvEQ5Z0zKGiCtjlNqWgrEVgZ8qkahTJlj3xCd66n0"
+```
+## Acceso a la Data
+```{r}
+token<- create_token(app = "Trabajo_academico", api_key, api_secret,access_token, access_token_secret)
+
+```
+
+### Análisis cuenta twitter 
+
+Se analizará la cuente de Sanipes la cual se encarga de normar, fiscalizar y supervisar la cadena productiva de recursos pesqueros y acuícolas, y todo lo que implique en el ambito sanitario.
+
+## Se extra los últimos 1000 tweets de @SanipesPeru
+
+```{r}
+sanipes <- get_timeline("@SanipesPeru", 1000)
+```
+
+## Se guarda los tweets y se inicia la etapa de limpieza
+```{r}
+tweets.sanipes <- tweets_data(sanipes)
+head(tweets.sanipes)
+```
+
+
+## Preprocesamiento de la data
+```{r}
+max(tweets.sanipes$created_at); min(tweets.sanipes$created_at)
+head(tweets.sanipes$text)
+```
+
+
+# De los últimos 1000 tweets de la cuenta @SanipesPeru se observa la existencia de emojis, los cuales se reemplazan por su versión en caracteres alfanuméricos.
+```{r}
+library(textclean)
+textSamples2 = replace_emoji(sanipes$text)
+textSamples2 = replace_emoji_identifier(sanipes$text)
+textSamples3 = gsub("<.*>", "", textSamples2)
+firstLast(textSamples2)
+```
+
+
+# Creación de corpus
+
+```{r}
+library(tm)
+textolimpio <- tweets.sanipes$text
+textolimpio[1]
+micorpus <- Corpus(VectorSource(textolimpio))
+length(micorpus)
+content(micorpus[1])
+```
+## Transformar el texto extraido
+#Convertir a minusculas
+```{r}
+content(micorpus[24])
+micorpus <- tm_map(micorpus,content_transformer(tolower)) 
+content(micorpus[24])
+```
+# Para remover los URL.
+
+```{r,eval=FALSE}
+content(micorpus[24])
+removerURL <- function(x) gsub("http[^[:space:]]*", "", x)
+micorpus <- tm_map(micorpus, content_transformer(removerURL))
+content(micorpus[24])
+```
+# Eliminar tildes
+```{r}
+content(micorpus[24])
+removerTILDE <- function(x) chartr('áéíóú','aeiou',x)
+micorpus <- tm_map(micorpus, removerTILDE)
+content(micorpus[24])
+```
+
+# Elimanar ?s
+```{r}
+content(micorpus[24])
+remover <- function(x) chartr('?','n',x)
+micorpus <- tm_map(micorpus, remover)
+content(micorpus[24])
+```
+
+# Se remueve otros usuarios en el contenido extraido
+```{r}
+content(micorpus[24])
+removerUSUARIOS <- function(x) gsub("@\\w+", "", x)
+micorpus <- tm_map(micorpus, removerUSUARIOS)
+content(micorpus[24])
+```
+
+# a) Quitar las puntuaciones
+
+```{r}
+content(micorpus[24])
+micorpus <- tm_map(micorpus, removePunctuation)
+content(micorpus[24])
+```
+
+# Se eliminan los números
+```{r}
+content(micorpus[24])
+micorpus <- tm_map(micorpus, removeNumbers)
+content(micorpus[24])
+```
+
+# Se remueven stopwords a partir de una lista predeterminda
+
+```{r,eval = FALSE}
+stopwords("spanish")[1:308]
+```
+# Se remueven las palabras predefinidas en el stopword 
+```{r}
+content(micorpus[24])
+micorpus <- tm_map(micorpus, removeWords,c(stopwords("spanish")))
+content(micorpus[24])
+```
+# Para eleiminar espaciós en blanco dobles o más
+```{r}
+content(micorpus[24])
+micorpus <- tm_map(micorpus, stripWhitespace)
+content(micorpus[24])
+```
+# Para eliminar palabras específicas
+```{r}
+content(micorpus[24])
+micorpus <- tm_map(micorpus, removeWords,c("aqui", "conoce","ingresa",  "fin","hoy", "asi","peru", "pais","mas","lexiconbasdwyuinjizwzmvrhzq",	"lexiconckjoiawkmpbvyrhgmkjl",	"lexiconnppaoekamsnwxqmmkkof",	"lexiconsrazxwuqklwkufhkywux",	"lexiconyeukaaihgvgjxojnlyle","lexiconmazjjkevdtbopeipqgyp","lexiconrzwkhmcjdzolxvhzdrht","lexiconsrxthuoxhsflbrgahbgl","lexiconrxtrafgolujjmdnhpjsm",	"lexiconcvnclsdrumtvcivkwdrp",	"lexiconsasdhhpuxbbvofcxfbpu",	"lexiconqvjtwcvezwxligwidkbp",	"lexiconioyjackmbsrhaqzjtkyt",	"lexiconrbpgtyvmvmobbrigxgws",	"lexiconnpakkbircunursqqjulo",	"lexiconcxqjobacfbkigktxdtev","manera",	"cuenta",	"parte",	"johnny",	"ahora",	"trav",	"realizando",	"nueva",	"quieres",	"siempre","gran",	"novayasalbanco","recuerda"
+))
+content(micorpus[24])
+```
+
+
+### Exploración de los datos
+
+# Matriz de terminos
+
+```{r}
+term <- TermDocumentMatrix(micorpus)
+term
+inspect(term)
+
+```
+# Analisis de frecuencia de palabras
+
+```{r}
+findFreqTerms(term,lowfreq = 20)
+```
+
+
+```{r}
+m <- as.matrix(term)
+head(m)
+```
+```{r}
+wf <- sort(rowSums(m),decreasing=TRUE)
+wf
+head(wf)
+```
+### Data frame con las palabras y sus frecuencias
+```{r}
+T_frecuencia <- data.frame(word = names(wf), freq=wf)
+T_frecuencia1<-head(T_frecuencia)
+hist(T_frecuencia1$freq)
+T_frecuencia1 <- subset(T_frecuencia, T_frecuencia$freq >= 10)
+T_frecuencia
+```
+## Gráfico de palabras repetidas
+```{r}
+ggplot(T_frecuencia1, aes( x= word, y=freq )) + geom_bar(stat="identity") +
+  xlab("Terminos") + ylab("Frecuencia") + coord_flip() +
+  theme(axis.text=element_text(size=7))
+```
+
+# Diagrama de barras
+```{r}
+grafico_barras<-barplot(T_frecuencia1[1:10,]$freq, las = 2, names.arg = T_frecuencia1[1:10,]$word,
+            col ="lightblue", main ="", font.axis=1,cex.names=0.55,
+            ylab = "Frecuencia")
+```
+# Nube de palabras
+```{r}
+library(wordcloud)
+head(T_frecuencia)
+termcount <- data.frame(freq = apply(term,1,sum))
+head(termcount)
+wordcloud(T_frecuencia$word, T_frecuencia$freq, random.order=FALSE, min.freq=2, colors=brewer.pal(8, "Dark2"))
+```
+### Modelamiento
+
+#Palabras asociadas
+```{r}
+findAssocs(term, c("pesca","inocuidad","sanidad","sanitaria"), c(0.40))
+```
+
+
+# Clúster de palabras
+```{r}
+hc <- hclust(dist(T_frecuencia1)^2, "cen")
+plot(hc, hang = -1, main = "Sample Tree", cex = .5)
+```
+## Analisis de sentimiento
+```{r}
+library(SentimentAnalysis)
+library(knitr)
+sentimientos <- analyzeSentiment(textolimpio,language = "spanish")
+sentimientos_final <- data.frame(textolimpio,
+                                 sentiment = convertToDirection(sentimientos$SentimentGI))
+head(sentimientos_final)
+str(sentimientos_final)
+#Table de valoraciones
+table0<-table(sentimientos_final$sentiment)
+kable(table0)
+sentimientos_final$score <- 0
+sentimientos_final$score[sentimientos_final$sentiment == "positive"] <- 1
+sentimientos_final$score[sentimientos_final$sentiment == "negative"] <- -1
+head(sentimientos_final)
+
+table1<-table(sentimientos_final$score)
+kable(table1)
+b<-sentimientos_final%>% filter(sentiment=="negative")
+```

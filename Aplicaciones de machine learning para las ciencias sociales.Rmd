@@ -1,0 +1,240 @@
+---
+title: "Introducción a Machine Learning para Ciencias Sociales"
+subtitle: "Proyecto 2"
+author: "Josué Tapia"
+output: 
+  pdf_document: 
+    highlight: kate
+---
+
+
+
+```{r}
+#Limpiando el espacio de trabajo
+rm(list=ls())
+```
+
+
+1)Considere el índice de Gini, el error de clasificación y la entropía en un árbol de clasificación con dos clases. Cree una sola gráfica que muestre cada una de estas cantidades como una función de $\hat{p}m1$. El eje x debe mostrar $\hat{p}m1$, con un rango de 0 a 1, y el eje y debe mostrar el valor del índice de Gini, el error de clasificación y la entropía.
+```{r}
+p = seq(0, 1, 0.01)
+Gini = p * (1 - p) * 2
+Entropía = -(p * log(p) + (1 - p) * log(1 - p))
+Error_clasif = 1 - pmax(p, 1 - p)
+matplot(p, cbind(Gini, Entropía, Error_clasif ), col = c("orange", "blue", "black"))
+```
+2)Supongamos que producimos diez muestras tipo bootstrap a partir de un conjunto de datos cuya
+variable dependiente es Red y Green. Luego aplicamos un árbol de clasificación a cada muestra y, para un valor específico de X, producimos 10 estimaciones de P(Red|X):
+
+0,1; 0,15; 0,2; 0,2; 0,55; 0,6; 0,6; 0,65; 0,7; 0,75
+
+Hay dos formas comunes de combinar estos resultados en una sola predicción. Uno es el enfoque
+de voto mayoritario. El segundo enfoque consiste en clasificar en función de la probabilidad media.En este ejemplo, ¿cuál es la clasificación final (predicción) bajo cada uno de estos dos enfoques?.
+
+```{r}
+#Las 10 estimaciones de prob=P(Red|X):
+prob = c(0.1, 0.15, 0.2, 0.2, 0.55, 0.6, 0.6, 0.65, 0.7, 0.75)
+```
+Enfoque de voto mayoritario (Red)
+```{r}
+sum(prob >= 0.5) > sum(prob < 0.5)
+```
+Si nos basamos en una probabilidad que inicie en $50\%$, se puede ver que la cantidad de predicciones rojas es mayor que la cantidad de predicciones verdes.
+
+
+Clasificación en función de la probabilidad media (Green)
+```{r}
+mean(prob)
+```
+El promedio de la probabilidades es menor al $50\%$, para este caso es Green
+
+3) Proporcione una explicación detallada del algoritmo que se utiliza para ajustar un árbol de regresión
+
+En principio, debemos tener en cuenta que el proceso de predicción vía estratificación de una espacio característico tiene un bajo rendimiento en los test por ser demasiado complejo en el árbol resultante. Por otro lado, sabemos que menos divisiones podrían conducir a una varianza más baja y una mejor interpretación a costa de un pequeño sesgo. De esta manera, una mejor estrategia/algoritmo que podemos utilizar para ajustar el árbol de regresión es hacer crecer un árbol muy grande T sub cero y luego el prune de vuelta para obtener el subárbol.
+
+
+Así, nos preguntamos: ¿Cómo podemos determinar el “prune” del árbol? Para empezar, nuestro objetivo es seleccionar el subárbol que nos permite obtener el menor término de error. Dicho ello, dado un subárbol,  podemos realizar el test de error mediante un “cross-validation” o un “validation set approach”. Sin embargo, la estimación del error cross-validation para cada posible subárbol puede ser muy engorrosa, puesto que existe un número extremadamente grande de posibles subárboles.  En otras palabras, necesitamos una forma de seleccionar una muestra pequeña de subárboles a considerar en nuestra estimación.
+
+
+En particular, en este algoritmo presentamos el “cost complexity pruning”, también conocido como “weakest link pruning”, que en vez de considerar cada posible subárbol, consideramos una secuencia de árboles indexados por un parámetro tuning no negativo alfa. A cada valor de alfa le corresponderá un subárbol perteneciente al conjunto T sub cero tal que sea el menor posible. De esta manera, cuando alfa es igual a cero, el valor del subárbol T sería igual al T sub cero porque mide el training error. Sin embargo, si alfa aumenta, se nos penaliza por tener un árbol con muchos nodos terminales con una cantidad de la función de pruning que tenderá a minimizarse para un subárbol más pequeño.
+
+
+Así pues, resulta que a medida que aumentamos el valor de alfa, las ramas se podan del árbol de forma anidad y predecible, lo cual nos permite obtener fácilmente la secuencia completa de subárboles en función del alfa. Luego, seleccionamos el valor alfa utilizando un conjunto de validación o una validación cruzada. Así, volviendo al conjunto de datos completos, obtendremos el subárbol correspondiente al alfa. En resumen, el algoritmo para ajustar un árbol de regresión sigue los siguientes pasos.
+
+
+En primer lugar, utilizamos el enfoque de partición binaria recursiva para generar un árbol grande en la data de entrenamiento (training data) deteniéndose solo cuando cada nodo terminal tenga menos que un número mínimo de observaciones. Como segundo paso, definimos y aplicamos el “cost complexity pruning” para obtener una secuencia de mejores subárboles como función de alfa. Así, en cada valor de alfa, tendremos un árbol decisión, un tamaño fijo para cada valor de alfa.
+
+
+En tercer lugar, utilizamos la validación cruzada de K-grupos para escoger el alfa. Es decir, dividimos el conjunto de entrenamiento en K grupos. Para cada grupo k = 1,..., K, repetimos los pasos 1 y 2 en todos menos el subgrupo k de los datos de entrenamiento. Luego, debemos evaluar el MSE en los datos del subgrupo k, como función de alfa. De esta manera, promediamos los resultados de cada valor de alfa y escogemos aquel que minimiza el error promedio. Por último, regresamos a subárbol del segundo paso que corresponde al valor escogido de alfa.
+
+
+
+
+4) En el laboratorio, aplicamos el modelo random forest a los datos de Boston usando mtry = 6,
+ntree = 25 y ntree = 500. Cree una gráfica que muestre el error de prueba resultante de los
+modelos RF aplicando todas las combinaciones posibles de mtry y ntree, dado que mtry toma
+valores de 5 a 40 de 5 en 5; y ntree, desde 200 a 800 de 100 en 100.
+
+```{r}
+library(MASS)
+library(randomForest)
+```
+```{r}
+set.seed(1200)
+#Para ntree se tomará el rango de 1 a 500, mientras que ntry toma los valores de p,p/2,sqrt(p)
+#Para el entrenamiento y matrices de prueba
+entrenamiento = sample(dim(Boston)[1], dim(Boston)[1]/2)
+X.entrenamiento = Boston[entrenamiento, -14]
+X.test = Boston[-entrenamiento, -14]
+Y.entrenamiento = Boston[entrenamiento, 14]
+Y.test = Boston[-entrenamiento, 14]
+p = dim(Boston)[2] - 1
+p.2 = p/2
+p.sq = sqrt(p)
+
+rf.boston.p = randomForest(X.entrenamiento, Y.entrenamiento, xtest = X.test, ytest = Y.test, 
+    mtry = p, ntree = 500)
+rf.boston.p.2 = randomForest(X.entrenamiento, Y.entrenamiento, xtest = X.test, ytest = Y.test, 
+    mtry = p.2, ntree = 500)
+rf.boston.p.sq = randomForest(X.entrenamiento, Y.entrenamiento, xtest = X.test, ytest = Y.test, 
+    mtry = p.sq, ntree = 500)
+plot(1:500, rf.boston.p$test$mse, col = "green", type = "l", xlab = "Número de arboles", 
+    ylab = "Error de prueba", ylim = c(10, 19))
+lines(1:500, rf.boston.p.2$test$mse, col = "red", type = "l")
+lines(1:500, rf.boston.p.sq$test$mse, col = "blue", type = "l")
+legend("topright", c("m=p", "m=p/2", "m=sqrt(p)"), col = c("green", "red", "blue"), 
+    cex = 1, lty = 1)
+```
+En el gráfico se puede visualizar que el error de prueba para un solo arbol, aprox. 18, es alto, mientras que si agregamos más arboles, a partir de 100 arboles, se estabiliza, por lo que se reduce el error de estimación.
+
+5) En el laboratorio, se aplicó un árbol de clasificación al conjunto de datos Carseats después de convertir Sales en una variable de respuesta cualitativa. Ahora buscaremos predecir Ventas de manera cuantitativa.
+
+a) Divida el conjunto de datos en un conjunto de entrenamiento (train) y un conjunto de prueba (test).
+```{r}
+library(ISLR)
+attach(Carseats)
+set.seed(1)
+```
+
+```{r}
+train = sample(dim(Carseats)[1], dim(Carseats)[1]/2)
+Carseats.train = Carseats[train, ]
+Carseats.test = Carseats[-train, ]
+```
+
+
+b) Ajuste un árbol de regresión al conjunto de entrenamiento. Interprete los resultados. ¿Qué valor de MSE obtienes para el conjunto de prueba?
+
+```{r}
+library(tree)
+tree.carseats = tree(Sales ~ ., data = Carseats.train)
+summary(tree.carseats)
+```
+
+```{r}
+plot(tree.carseats)
+text(tree.carseats, pretty = 0)
+```
+
+La prueba MSE para el conjunto de prueba es 4.922
+```{r}
+pred.carseats = predict(tree.carseats, Carseats.test)
+mean((Carseats.test$Sales - pred.carseats)^2)
+```
+
+c) Utilice la validación cruzada para determinar el nivel óptimo de complejidad del árbol. ¿Podar el árbol mejora el MSE del conjunto de prueba?
+
+```{r}
+cv.carseats = cv.tree(tree.carseats, FUN = prune.tree)
+par(mfrow = c(1, 2))
+plot(cv.carseats$size, cv.carseats$dev, type = "b")
+plot(cv.carseats$k, cv.carseats$dev, type = "b")
+```
+
+```{r}
+pruned.carseats = prune.tree(tree.carseats, best = 15)
+par(mfrow = c(1, 1))
+plot(pruned.carseats)
+text(pruned.carseats, pretty = 0)
+```
+Podar el arbol incrementaría la prueba MSE a 4.924
+```{r}
+pred.pruned = predict(pruned.carseats, Carseats.test)
+mean((Carseats.test$Sales - pred.pruned)^2)
+```
+
+
+d) Utilice el método bagging para analizar estos datos. ¿Qué valor de MSE obtienes para el
+conjunto de prueba? Use la función importance() para determinar que variables son las más
+importantes.
+
+```{r}
+library(randomForest)
+```
+
+```{r}
+bag.carseats = randomForest(Sales ~ ., data = Carseats.train, mtry = 10, ntree = 500, 
+    importance = T)
+bag.pred = predict(bag.carseats, Carseats.test)
+mean((Carseats.test$Sales - bag.pred)^2)
+```
+
+```{r}
+importance(bag.carseats)
+```
+A diferencia de las pruebas anteriores, con el método bagging se mejora la prueba MSE con 2.657 . Asimismo, se puede ver que las variables más importantes para la predicción son Price, ShelveLoc y CompPrice. 
+
+e) Utilice Random forest para analizar estos datos. ¿Qué valor de MSE obtienes para el conjunto de prueba? Use la función importance() para determinar que variables son las más importantes.Describa el efecto de m, el número de variables consideradas en cada división, sobre la tasa de error obtenida.
+
+```{r}
+rf.carseats = randomForest(Sales ~ ., data = Carseats.train, mtry = 5, ntree = 500, 
+    importance = T)
+rf.pred = predict(rf.carseats, Carseats.test)
+mean((Carseats.test$Sales - rf.pred)^2)
+```
+
+
+```{r}
+importance(rf.carseats)
+```
+
+A diferencia del método bagging, se puede ver que el Random forest empeora la prueba MSE con 2.701. Asimismo, se puede ver que las variables más importantes para la predicción son Price, ShelveLoc y Age. 
+
+
+
+
+f) Analice la data utilizando boosting.
+```{r}
+library(rpart)
+model_tree <- rpart(Sales ~ ., data=Carseats.train)
+```
+
+```{r}
+y_hat <- predict(model_tree)
+#Para la prueba MSE
+mean((Carseats.train$Sales - y_hat)^2)
+#Para la prueba RMSE
+sqrt(sum((Carseats.train$Sales - y_hat)^2))
+```
+Se aplicará la función gbm para el algoritmo Gradient Boost (Boosting) con un $\alpha=0.01$, 5000 árboles (iteraciones) y una profundidad de 1 en cada árbol (stump).
+```{r}
+library(gbm)
+set.seed(123) 
+model_gbm1 <- gbm(Sales ~., data = Carseats.train,
+                  distribution="gaussian", cv.folds=5, 
+                  shrinkage=0.01, n.minobsinnode=10,
+                  n.trees=5000, interaction.depth=1)
+print(model_gbm1)
+```
+```{r}
+#Para la prueba MSE
+mean(model_gbm1$cv.error)
+#Para obtener el menor RMSE
+sqrt(min(model_gbm1$cv.error))
+```
+Como se puede ver con el método Boosting se obtiene una menor prueba MSE con 2.218.
+
+```{r}
+gbm.perf(model_gbm1, method = "cv")
+```
+Como se puede ver en la figura, con este método, en la iteración (número de árboles) 2600 aprox. se obtiene el menor RMSE.

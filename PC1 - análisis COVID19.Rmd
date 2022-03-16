@@ -1,0 +1,292 @@
+---
+title: "PC_1"
+author: "Josué Tapia"
+date: "14/11/2021"
+output: rmdformats::readthedown
+---
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```
+
+```{r}
+rm(list=ls())
+```
+
+```{r}
+#memory.limit(size=2500)
+```
+
+```{r}
+#setwd("C:/Users/User/Desktop/PUCP-DIPLOMA-CD-2021/R_CCSS/trabajo_individual/01. BD I CENPAR-2012")
+data<-read.csv("https://raw.githubusercontent.com/ChristianChiroqueR/Diplomado-2021---R-Intermedio/main/Sesion%205%20-%20PCA%20y%20EFA/vacunados_apurimac.csv", header = T)
+View(data)
+```
+
+```{r}
+library(rio)# importar las bases de datos
+library(dplyr) # usar el pipe 
+library(tidyverse) # usar el pipe
+library(lubridate) # dar formato a las fechas
+library(knitr) # dar formato a las tablas en html con la función kable
+library(rmarkdown)  # usar un diseño de html
+```
+
+###Abrir las librerias
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+# Práctica Califica 1
+# a) Abra la data y describa brevemente (tipo de variables, número de casos, etc.)
+# b) Cree una nueva variable (de nombre “fecha”) haciendo uso de la variable “FECHA_VACUNACION”. Puede utilizar la función ymd () del paquete “lubridate”
+```{r}
+data$FECHA_VACUNACION=as.character(data$FECHA_VACUNACION)
+data$fecha=as.Date(data$FECHA_VACUNACION,"%Y%m%d")
+data$año=year(data$fecha) 
+data$mes=month(data$fecha) 
+data$añomes<- as.factor(format(data$fecha,'%Y-%m'))
+```
+
+# c) Haciendo uso de tidyverse cree una nueva data que agregue los datos según fecha para saber el total de vacunados por día. (1pt) ¿Qué día se realizó la mayor cantidad de vacunas en Apurímac?
+
+```{r}
+data1=data%>%
+  group_by(fecha)%>%
+  summarise(añomes = n())
+```
+# d) Presentar los siguientes gráficos
+# a. Gráfico de línea de evolución diaria de total de vacunados. Presente la suma acumulada en el eje y (función cumsum()).
+
+```{r}
+data1$cum_añomes <- cumsum(data1$añomes)
+ggplot(data1, aes(x=fecha, y=cum_añomes)) +
+  geom_line() + labs(x='Fecha', y='Evolución diaria vacunados')
+
+_______
+
+#Tabla Top 5 por departamentos, provincia y desembarcadero
+tabla_PA_desem_top5=data_PA%>%
+  group_by(NOM_DD, NOM_PP, NOM_DESMB)%>%
+  summarise(Numero_PA_DESMB = n())%>%
+  top_n(n = 5)
+kable(tabla_PA_desem_top5)
+
+```
+# b. Gráfico de pie/barras según el FABRICANTE del total de vacunas.
+```{r}
+data2=data%>%
+  group_by(FABRICANTE)%>%
+  summarise(añomes = n())
+pie(data2$añomes, labels = FABRICANTE, main="Tipo de vacunas")
+View(data2)
+data2=data2 %>% mutate(Percentage = añomes/sum(añomes)*100)
+data2 = data2 %>%
+  arrange(desc(FABRICANTE)) %>%
+  mutate(lab.ypos = cumsum(Percentage) - 0.5*Percentage)
+data2$Percentage=round(data2$Percentage, digits = 2)
+mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF")
+ggplot(data2, aes(x = "", y = Percentage, fill = FABRICANTE)) +
+  geom_bar(width = 1, stat = "identity", color = "white") +
+  coord_polar("y", start = 0)+
+  geom_text(aes(y = lab.ypos, label = Percentage), color = "white")+
+  scale_fill_manual(values = mycols) +
+  theme_void()
+
+_________
+#Tabla Low 5 por departamentos, provincia y desembarcadero
+
+tabla_PA_desem_low5=data_PA%>%
+  group_by(NOM_DD, NOM_PP, NOM_DESMB)%>%
+  summarise(Numero_PA_DESMB = n())%>%
+  arrange (Numero_PA_DESMB)%>%
+  tail(n = 5)
+kable(tabla_PA_desem_low5)
+
+```
+#e) En base a la variable GRUPO_RIESGO y utilizando el paquete stringr (2pt):
+# a. Cree una nueva variable dicotómica que indique si la persona es ADULTO MAYOR.
+
+```{r,eval=FALSE}
+
+data$EDAD_dictómica=ifelse(data$EDAD>=60,"Adulto mayor", "No adulto mayor" )
+view(data)
+
+
+------------
+# Tabla pescadores por grupos de edad
+data_PA = data_PA %>% mutate(GEDAD = case_when(EDAD>=0 & EDAD <=18   ~ "Menores18", EDAD>18 & EDAD <=29   ~ "Jovenes",EDAD >29 & EDAD <=60   ~ "Adultos",EDAD > 60 ~ "Adultosmayores"))
+
+tabla_GEDAD_PA=data_PA%>%
+  group_by(GEDAD)%>%
+  summarise(Numero_PA = n())%>%
+  arrange (Numero_PA)
+tabla_GEDAD_PA=na.omit(tabla_GEDAD_PA)
+kable(tabla_GEDAD_PA)
+
+```
+
+```{r}
+
+#Para calcular porcentajes puede utilizar el comando table
+
+
+data_PA = data_PA %>% mutate(SEXO = case_when(S2_3>=1 & S2_3 <2   ~ "MASCULINO", S2_3>=2 ~ "FEMENINO"))
+
+tabla_sexo2=data_PA%>%
+  group_by(SEXO)%>%
+  summarise(Numero_PA = n())%>%
+  arrange (Numero_PA)
+tabla_sexo2=na.omit(tabla_sexo2)
+kable(tabla_sexo2)
+
+tabla_sexo=prop.table(table(data_PA$SEXO))*100
+kable(tabla_sexo)
+tabla_sexo
+
+```
+
+
+```{r}
+# Tabla nivel de educación
+library(dplyr)
+
+data_PA = data_PA %>% mutate(NEDUC = case_when(S2_12>=1 & S2_12 <2   ~ "Sin_Nivel", S2_12>=2 & S2_12 <3   ~ "Inicial",S2_12>=3 & S2_12 <4   ~ "Primaria",S2_12>=4 & S2_12 <5   ~ "Secundaria",S2_12>=5 & S2_12 <6   ~ "Instituto_incompleto",S2_12>=6 & S2_12 <7   ~ "Instituo_completo",S2_12>=7 & S2_12 <8   ~ "Universitaria_incompleta",S2_12>=8 & S2_12 <9   ~ "Universitaria_completa",S2_12>=9 ~ "Omiten"))
+
+
+tabla_PA_educ=data_PA%>%
+  group_by(NEDUC)%>%
+  summarise(Numero_PA = n())%>%
+  arrange (Numero_PA)
+tabla_PA_educ=na.omit(tabla_PA_educ)
+kable(tabla_PA_educ)
+
+```
+
+
+# 4. Cinco gráficos con ggplot2
+
+
+```{r}
+#install.packages("zoo")
+#install.packages("extrafont")
+#install.packages("ggthemes")
+#library(ggthemes)
+library(ggplot2)
+
+ggplot(tabla_PA_depa, aes(x = NOM_DD , y= Numero_PA_depa)) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(label=Numero_PA_depa), position=position_dodge(width=0.9), vjust=-0.25) +
+  theme_bw() +
+  labs(title="Pescadores Artesanales por Departamento",x="Departamento",y="Pescadores_Artesanales",caption = "Fuente:CENPAR") +
+  ggthemes::theme_economist() +
+  theme(axis.text.x=element_text(angle=90, hjust=0))
+```
+
+
+```{r}
+#install.packages("zoo")
+#install.packages("extrafont")
+#install.packages("ggthemes")
+#library(ggthemes)
+
+ggplot(tabla_PA_desem_top5, aes(x = NOM_DESMB, y=Numero_PA_DESMB )) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(label=Numero_PA_DESMB ), position=position_dodge(width=0.05), vjust=-0.25)+
+  theme_bw() +
+  labs(title="Pescadores_Artesanales_por_Desembarcadero",x="Desembarcaderos",y="Pescadores_Artesanales",caption = "Fuente:CENPAR")+
+  ggthemes::theme_economist()+
+  theme(axis.text.x=element_text(angle=90, hjust=0))
+```
+
+
+```{r, message=FALSE,warning = FALSE}
+
+library(tidyverse) # usar el pipe 
+library(dplyr)
+library(scales)
+
+data_PA = data_PA %>% mutate(GEDAD = case_when(EDAD>=0 & EDAD <=18   ~ "Menores18", EDAD>18 & EDAD <=29   ~ "Jovenes",EDAD >29 & EDAD <=60   ~ "Adultos",EDAD > 60 ~ "Adultosmayores"))
+data_PA$GEDAD = as.ordered(data_PA$GEDAD)
+
+data_PA %>%
+  group_by(GEDAD,SEXO) %>%
+  summarise(casos = n()) %>%
+  group_by(GEDAD) %>% 
+  mutate(label_pos= casos / sum(casos)) %>%
+  mutate(perc = scales::percent(round(casos / sum(casos), 3))) %>% 
+  ggplot(aes(x=GEDAD,y=casos,fill=SEXO)) + geom_bar(stat = "identity",position="fill") +
+  coord_flip() + scale_y_continuous(labels = scales::percent)  +
+  labs(title="Pescadores artesanales por grupos de edad y sexo", 
+       y="Porcentaje de pescadores artesanales por sexo",x="Rangos de edad", 
+       caption = "Fuentes de datos CENPAR") + theme_bw() + 
+  scale_fill_manual(values = c("lightpink2", "lightskyblue2")) + 
+  geom_text(aes(label = perc, y = label_pos), vjust = 0.3,size = 3, 
+            position = position_stack(vjust = 0.5))
+```
+
+```{r, message=FALSE,warning = FALSE}
+
+library(tidyverse) # usar el pipe 
+library(dplyr)
+library(scales)
+
+data_PA %>%
+  group_by(NOM_DD,SEXO) %>%
+  summarise(casos = n()) %>%
+  group_by(NOM_DD) %>% 
+  mutate(label_pos= casos / sum(casos)) %>%
+  mutate(perc = scales::percent(round(casos / sum(casos), 3))) %>% 
+  ggplot(aes(x=NOM_DD,y=casos,fill=SEXO)) + geom_bar(stat = "identity",position="fill") +
+  coord_flip() + scale_y_continuous(labels = scales::percent)  +
+  labs(title="Pescadores artesanales por departamento y sexo", 
+       y="Porcentaje de pescadores artesanales por sexo",x="Departamentos", 
+       caption = "Fuentes de datos CENPAR") + theme_bw() + 
+  scale_fill_manual(values = c("lightpink2", "lightskyblue2")) + 
+  geom_text(aes(label = perc, y = label_pos), vjust = 0.3,size = 3, 
+            position = position_stack(vjust = 0.5))
+```
+
+```{r}
+
+data_PA%>% 
+  group_by(SEXO) %>% 
+  summarise(conteo = n())%>% 
+  mutate(prop = conteo / sum(conteo)*100)%>%
+  mutate(ypos=cumsum(prop)-0.5*prop)%>%
+  ggplot() +aes(x = " ", y = prop, fill = SEXO) +
+  geom_bar(stat = "identity",width = 1,color="white")+coord_polar("y", start=0)+
+  labs(title = "Porcentaje de pescadores hombres y mujeres")+
+  theme_void() +theme(legend.position = "bottom")+geom_text(aes(y = ypos, label = SEXO), color = "white", size=6)+
+  scale_fill_brewer(palette="Dark2")
+```
+
+```{r}
+
+data_PA%>% 
+  group_by(NOM_DD, SEXO) %>% 
+  summarise(conteo = n())%>% 
+  mutate(prop = conteo / sum(conteo)*100)%>%
+  mutate(ypos=cumsum(prop)-0.5*prop)%>%
+  
+  ggplot() +aes(x = " ", y = prop, fill = SEXO) +
+  geom_bar(stat = "identity",width = 1,color="white")+coord_polar("y", start=0)+
+  labs(title = "Porcentaje de pescadores por departamento y sexo ")+
+  theme_void() +theme(legend.position = "bottom")+geom_text(aes(y = ypos, label = SEXO), color = "white", size=1)+
+  scale_fill_brewer(palette="Dark2")+facet_wrap(~NOM_DD, ncol=9, dir ="v")+labs(y="",x="")
+```
+
+```{r}
+#install.packages("Zoo")
+#install.packages("extrafont")
+#install.packages("ggthemes-master.zip", repos = NULL, type="source")
+#library(ggthemes)
+
+ggplot(data=data_PA,aes(x= NEDUC, fill=SEXO)) +
+geom_bar(data=subset(data_PA,SEXO=="FEMENINO")) +
+geom_bar(data=subset(data_PA,SEXO=="MASCULINO"),aes(y=..count..*(-1))) +
+labs(title="Nivel_educativo_pescador_artesanal_por_sexo",x="Nivel educativo",y="Cantidad por sexo",caption = "Fuente:CENPAR")+
+scale_y_continuous(breaks=seq(-100000,100000,20000),labels=abs(seq(-100000,100000,20000)))+
+  coord_flip()
+
+```
