@@ -1,0 +1,112 @@
+---
+title: "Peruvian_chicha"
+author: "Josue Tapia"
+date: "27/8/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+#Package to use
+```{r load-packages ,message=FALSE}
+install.packages("readxl")
+install.packages("ggplot2")
+install.packages("dplyr")
+install.packages("wordcloud")
+install.packages("RColorBrewer")
+install.packages("wordcloud2")
+install.packages("tm")
+install.packages("knitr")
+```
+
+# cargamos paquetes
+
+```{r load}
+library(ggplot2)
+library(dplyr)
+library(wordcloud)
+library(readxl)
+library(wordcloud2)
+library(tm)
+library(knitr)
+```
+
+## load data
+```{r load-data}
+file.choose()
+ruta_excel <- "C:\\Program Files\\RStudio\\doc de rstudio eliminados\\columbia test\\peruvian_chicha.xls"
+peruvian_chicha <- read_excel(ruta_excel)
+View(peruvian_chicha)
+ls(peruvian_chicha)
+```
+
+#graphic 1
+```{r data}
+l<-peruvian_chicha %>% 
+    filter(duplicated(ArtistName)) 
+
+l <- within(l, ArtistName <- factor(ArtistName,levels=names(sort(table(ArtistName),decreasing =TRUE))))       
+
+ggplot(data = l)+geom_bar(mapping = aes(x= ArtistName),fill = "#2471A3" ) +theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+
+
+```
+
+
+
+
+# graphic 2
+```{r peruvian_chicha}
+q<-filter(peruvian_chicha, Year>=1980, Year<=2000 )
+w<-arrange(q, Year)
+View(w)
+w <- within(w, AlbumName <- factor(AlbumName,levels=names(sort(table(AlbumName),increasing=TRUE))))                
+ggplot(data = w) + geom_bar(mapping = aes(x=AlbumName) )  + coord_flip() + theme_bw()+theme(panel.background = element_rect("lightblue"), panel.grid.minor = element_line(linetype = "dotted"))
+```
+
+#create a vector and corpus
+```{r vector-corpus}
+text<- w$LyricsText
+docs<-Corpus(VectorSource(text))
+
+```
+
+#clean data
+```{r clean data}
+docs <- docs %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(stripWhitespace)
+docs <- tm_map(docs, content_transformer(tolower))
+docs <- tm_map(docs, removeWords, stopwords("spanish"))
+```
+
+
+# matrix contain columns: words of variable LyricsText separeted and frecuency of them
+```{r matrix}
+dtm <- TermDocumentMatrix(docs) 
+matrix <- as.matrix(dtm) 
+words <- sort(rowSums(matrix),decreasing=TRUE) 
+df <- data.frame(word = names(words),freq=words)
+View(df)
+```
+#word cloud style1
+```{r wordcloud1}
+wordcloud(words = df$word, freq = df$freq, min.freq = 5,max.words=500, random.order=FALSE, rot.per=0.35,colors=brewer.pal(8, "Dark2"), scale=c(3.5,0.25))
+
+```
+
+#word cloud style2
+
+```{r wordcloud2}
+wordcloud2(data=df, size=1 , color='random-dark')
+
+```
+
+#word cloud style3
+
+```{r wordcloud2}
+wordcloud2(data=df)
+
+```
+
