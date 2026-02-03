@@ -6,7 +6,7 @@ output:
   pdf_document: 
     highlight: kate
 ---
-
+//esto es una pruebajjjpra
 
 
 ```{r}
