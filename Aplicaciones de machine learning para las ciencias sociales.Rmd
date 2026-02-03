@@ -6,8 +6,6 @@ output:
   pdf_document: 
     highlight: kate
 ---
-//esto es una pruebajjjpra
-
 
 ```{r}
 #Limpiando el espacio de trabajo
